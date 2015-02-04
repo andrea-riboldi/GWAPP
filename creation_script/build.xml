@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="AppMaker" default="init" basedir=".">
+    <property file="build.properties" />
+   
+    
+    <path id="local_classpath">
+        <pathelement location = "${assets.dir}/libs/mysql-connector-java-5.1.10-bin.jar"/>
+    </path>
+    
+    <taskdef resource="net/sf/antcontrib/antlib.xml">
+        <classpath>
+            <pathelement location="${assets.dir}/ant/ant-contrib.jar" />
+        </classpath>
+    </taskdef>
+
+    <taskdef resource="com/sardak/antform/taskdefs.properties" classpath="${assets.dir}/ant/antform.jar" />
+
+    <target name="getname">
+        <echo message="Inserimento nome del nuovo progetto" />
+        <antform title="Create new application" stylesheet="style.test" image="logo.png" width="520" height="300">
+            <label>Insert the name of the new Green Web Application</label>
+            <textProperty label="Project Name: " property="work_version"/>
+            <controlbar>
+                <button label="Cancel" type="cancel" />
+                <button label="Create" type="ok" target="doproject" />
+            </controlbar>
+        </antform>
+    </target>
+        
+    <target name="doproject">
+        <fail unless="work_version" message="project name setted" />
+        <if>
+            <equals arg1="${work_version}" arg2="" />
+            <then>            
+                <echo message="project name not inserted" />
+            </then>
+            <else>
+                <echo message="${work_version} project creation" />
+                <delete dir="${out.dir}/${prjs.dir}/${work_version}" includeemptydirs="true" />
+                <mkdir dir="${out.dir}/${prjs.dir}/${work_version}"/>
+                <mkdir dir="${out.dir}/${prjs.dir}/${work_version}/web"/>
+                <copy todir="${out.dir}/${prjs.dir}/${work_version}/web" includeEmptyDirs="true">
+                    <fileset dir="${assets.dir}/gwapp/web" erroronmissingdir="false">
+                        <patternset>
+                            <include name="**/*" />
+                        </patternset>
+                    </fileset>
+                </copy>
+                
+                <mkdir dir="${out.dir}/${prjs.dir}/${work_version}/src"/>
+                <copy todir="${out.dir}/${prjs.dir}/${work_version}/src" includeEmptyDirs="true">
+                    <fileset dir="${assets.dir}/gwapp/src" erroronmissingdir="false">
+                        <patternset>
+                            <include name="**/*" />
+                        </patternset>
+                    </fileset>
+                </copy>
+                <antcall target="replace" />
+            </else>
+        </if>   
+    </target>
+    
+    <target name="dowar">
+        <war destfile="${out.dir}/${wars.dir}/${work_version}.war" webxml="${out.dir}/${prjs.dir}/${work_version}/web/WEB-INF/web.xml">
+            <fileset dir="${out.dir}/${prjs.dir}/${work_version}/web">
+                <include name="**/*.*"/>
+            </fileset>
+            <classes dir="${out.dir}/${prjs.dir}/${work_version}/src/java"/>
+        </war>
+        <antcall target="createdb" />
+    </target>
+
+    
+    <target name="createdb" description="">
+        <sql 
+            driver="${app.dbdriver}" 
+            url="${app.dburl}" 
+            userid="${app.dbuser}" 
+            password="${app.dbpassword}" 
+            classpathref="local_classpath">
+            create database ${work_version};
+        </sql>
+        <sql 
+            driver="${app.dbdriver}" 
+            url="${app.dburl}/${work_version}?useUnicode=true" 
+            userid="${app.dbuser}" 
+            password="${app.dbpassword}" 
+            src="${assets.dir}/gwapp/gwapp.sql"
+            classpathref="local_classpath"/>
+        
+    </target>
+    
+    <target name="replace" description="">
+        <replaceregexp byline="true"
+                       match="GWAPP" 
+                       replace="${work_version}"
+                       flags="i">
+            <fileset dir="${out.dir}/${prjs.dir}/${work_version}">
+                <include name="**/context.xml" />
+                <include name="**/app.properties" />
+            </fileset>
+            
+        </replaceregexp>
+        <antcall target="dowar" />
+    </target>
+    
+    
+    <target name="init" description="">
+        <antcall target="getname" />
+    </target>
+
+</project>
